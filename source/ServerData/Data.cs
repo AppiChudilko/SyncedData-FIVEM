@@ -16,6 +16,19 @@ namespace Server.Sync
             EventHandlers.Add("Sync:Server:Data:Reset", new Action<int, string>(Reset));
             EventHandlers.Add("Sync:Server:Data:Get", new Action<Player, int, string>(GetClient));
             EventHandlers.Add("Sync:Server:Data:Has", new Action<Player, int, string>(HasClient));
+            
+            Exports.Add("server_sync_data_set", new Action<int, string, object>(Set));
+            Exports.Add("server_sync_data_reset", new Action<int, string>(Reset));
+            
+            Exports.Add("server_sync_data_enable_debug", new Action<bool>(enableDebug =>
+            {
+                Debug = enableDebug;
+            }));
+            
+            Exports.Add("server_sync_data_get", new Func<int, string, object>(Get));
+            Exports.Add("server_sync_data_has", new Func<int, string, bool>(Has));
+            
+            TriggerEvent("OnServerSyncDataLoaded", CitizenFX.Core.Native.API.GetCurrentResourceName());
         }
         
         public static void Set(int id, string key, object value)

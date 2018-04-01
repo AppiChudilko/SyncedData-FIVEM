@@ -17,6 +17,19 @@ namespace Client.Sync
         {
             EventHandlers.Add("Sync:Client:Data:Get", new Action<object>(GetServer));
             EventHandlers.Add("Sync:Client:Data:Has", new Action<bool>(HasServer));
+            
+            Exports.Add("client_sync_data_set", new Action<int, string, object>(Set));
+            Exports.Add("client_sync_data_reset", new Action<int, string>(Reset));
+            
+            Exports.Add("client_sync_data_enable_debug", new Action<bool, CallbackDelegate>((enableDebug, callback) =>
+            {
+                Debug = enableDebug;
+            }));
+            
+            Exports.Add("client_sync_data_get", new Func<int, string, Task<object>>(async (id, key) => await Get(id, key)));
+            Exports.Add("client_sync_data_has", new Func<int, string, Task<bool>>(async (id, key) => await Has(id, key)));
+            
+            TriggerEvent("OnClientSyncDataLoaded", CitizenFX.Core.Native.API.GetCurrentResourceName());
         }
         
         public static void Set(int id, string key, object value)
