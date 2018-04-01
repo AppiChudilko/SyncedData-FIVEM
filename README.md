@@ -10,5 +10,5 @@ Include .dll in your resource
 }`
 
 `server_scripts {
-‘ServerData.net.dll’
+”ServerData.net.dll”
 }`
