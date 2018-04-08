@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CitizenFX.Core;
 
@@ -7,6 +9,7 @@ namespace Client.Sync
     public class Data : BaseScript
     {
         public static bool Debug = false;
+        private static readonly Dictionary<int, Dictionary<string, object>> _data = new Dictionary<int, Dictionary<string, object>>();
         
         private static dynamic _dataGet = null;
         private static bool _dataHas = false;
@@ -18,18 +21,84 @@ namespace Client.Sync
             EventHandlers.Add("Sync:Client:Data:Get", new Action<object>(GetServer));
             EventHandlers.Add("Sync:Client:Data:Has", new Action<bool>(HasServer));
             
-            Exports.Add("client_sync_data_set", new Action<int, string, object>(Set));
-            Exports.Add("client_sync_data_reset", new Action<int, string>(Reset));
-            
             Exports.Add("client_sync_data_enable_debug", new Action<bool, CallbackDelegate>((enableDebug, callback) =>
             {
                 Debug = enableDebug;
             }));
             
+            Exports.Add("client_sync_data_set", new Action<int, string, object>(Set));
+            Exports.Add("client_sync_data_reset", new Action<int, string>(Reset));
             Exports.Add("client_sync_data_get", new Func<int, string, Task<object>>(async (id, key) => await Get(id, key)));
             Exports.Add("client_sync_data_has", new Func<int, string, Task<bool>>(async (id, key) => await Has(id, key)));
             
+            Exports.Add("client_sync_data_set_locally", new Action<int, string, object>(SetLocally));
+            Exports.Add("client_sync_data_reset_locally", new Action<int, string>(ResetLocally));
+            Exports.Add("client_sync_data_get_locally", new Func<int, string, object>(GetLocally));
+            Exports.Add("client_sync_data_has_locally", new Func<int, string, bool>(HasLocally));
+            
             TriggerEvent("OnClientSyncDataLoaded", CitizenFX.Core.Native.API.GetCurrentResourceName());
+        }
+        
+        public static void SetLocally(int id, string key, object value)
+        {
+            lock (_data)
+            {
+                if (_data.ContainsKey(id))
+                {
+                    _data[id].Set(key, value);
+                }
+                else
+                {
+                    _data.Add(id, new Dictionary<string, object>());
+                    _data[id].Set(key, value);
+                }
+                
+                if (Debug)
+                    CitizenFX.Core.Debug.WriteLine($"[SET-LOCALLY] ID: {id}, KEY: {key}, OBJECT: {value}");
+            }
+        }
+        
+        public static void ResetLocally(int id, string key)
+        {
+            lock (_data)
+            {
+                if (!_data.ContainsKey(id) || !_data[id].ContainsKey(key)) return;
+                
+                _data[id].Remove(key);
+                
+                if (Debug)
+                    CitizenFX.Core.Debug.WriteLine($"[RESET-LOCALLY] ID: {id}, KEY: {key}");
+            }
+        }
+        
+        public static dynamic GetLocally(int id, string key)
+        {
+            lock (_data)
+            {
+                if (Debug)
+                    CitizenFX.Core.Debug.WriteLine($"[GET-LOCALLY] ID: {id}, KEY: {key}");
+                
+                return _data.ContainsKey(id) ? _data[id].Get(key) : null;
+            }
+        }
+        
+        public static bool HasLocally(int id, string key)
+        {
+            lock (_data)
+            {
+                if (Debug)
+                    CitizenFX.Core.Debug.WriteLine($"[HAS-LOCALLY] ID: {id}, KEY: {key}");
+                
+                return _data.ContainsKey(id) && _data[id].ContainsKey(key);
+            }
+        }
+        
+        public static string[] GetAllKeyLocally(int id)
+        {
+            lock (_data)
+            {
+                return _data.ContainsKey(id) ? _data[id].Select(pair => pair.Key).ToArray() : new string[0];
+            }
         }
         
         public static void Set(int id, string key, object value)
