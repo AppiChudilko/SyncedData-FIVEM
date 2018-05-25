@@ -12,13 +12,16 @@ namespace Client.Sync
         private static readonly Dictionary<int, Dictionary<string, object>> _data = new Dictionary<int, Dictionary<string, object>>();
         
         private static dynamic _dataGet = null;
+        private static dynamic _dataGetAll = null;
         private static bool _dataHas = false;
         private static bool _isServerGetCallBack = false;
+        private static bool _isServerGetAllCallBack = false;
         private static bool _isServerHasCallBack = false;
         
         public Data()
         {
             EventHandlers.Add("Sync:Client:Data:Get", new Action<object>(GetServer));
+            EventHandlers.Add("Sync:Client:Data:GetAll", new Action<dynamic>(GetAllServer));
             EventHandlers.Add("Sync:Client:Data:Has", new Action<bool>(HasServer));
             
             Exports.Add("client_sync_data_enable_debug", new Action<bool, CallbackDelegate>((enableDebug, callback) =>
@@ -29,11 +32,13 @@ namespace Client.Sync
             Exports.Add("client_sync_data_set", new Action<int, string, object>(Set));
             Exports.Add("client_sync_data_reset", new Action<int, string>(Reset));
             Exports.Add("client_sync_data_get", new Func<int, string, Task<object>>(async (id, key) => await Get(id, key)));
+            Exports.Add("client_sync_data_getall", new Func<int, Task<object>>(async id => await GetAll(id)));
             Exports.Add("client_sync_data_has", new Func<int, string, Task<bool>>(async (id, key) => await Has(id, key)));
             
             Exports.Add("client_sync_data_set_locally", new Action<int, string, object>(SetLocally));
             Exports.Add("client_sync_data_reset_locally", new Action<int, string>(ResetLocally));
             Exports.Add("client_sync_data_get_locally", new Func<int, string, object>(GetLocally));
+            Exports.Add("client_sync_data_getall_locally", new Func<int, object>(GetAllKeyLocally));
             Exports.Add("client_sync_data_has_locally", new Func<int, string, bool>(HasLocally));
             
             TriggerEvent("OnClientSyncDataLoaded", CitizenFX.Core.Native.API.GetCurrentResourceName());
@@ -135,6 +140,32 @@ namespace Client.Sync
             return returnData;
         }
         
+        public static async Task<dynamic> GetAll(int id, int waitMs = 500)
+        {
+            try
+            {
+                TriggerServerEvent("Sync:Server:Data:GetAll", id);
+                
+                while (!_isServerGetAllCallBack && waitMs > 0)
+                {
+                    waitMs--;
+                    await Delay(1);
+                }
+                    
+                if (Debug)
+                    CitizenFX.Core.Debug.WriteLine($"[GETALL] ID: {id}", "");
+    
+                dynamic returnData = _dataGetAll;
+                ResetGetAllCallback();
+                return returnData;
+            }
+            catch (Exception e)
+            {
+                CitizenFX.Core.Debug.WriteLine($"GETALL {e}");
+                throw;
+            }
+        }
+        
         public static async Task<bool> Has(int id, string key, int waitMs = 500)
         {
             TriggerServerEvent("Sync:Server:Data:Has", id, key);
@@ -163,6 +194,16 @@ namespace Client.Sync
             _isServerGetCallBack = true;
         }
         
+        private static async void GetAllServer(dynamic callback)
+        {
+            while (_isServerGetCallBack)
+            {
+                await Delay(1);
+            }
+            _dataGetAll = callback;
+            _isServerGetAllCallBack = true;
+        }
+        
         private static async void HasServer(bool callback)
         {
             while (_isServerHasCallBack)
@@ -183,6 +224,12 @@ namespace Client.Sync
         {
             _dataGet = null;
             _isServerGetCallBack = false;
+        }
+        
+        private static void ResetGetAllCallback()
+        {
+            _dataGetAll = null;
+            _isServerGetAllCallBack = false;
         }
     }
 }

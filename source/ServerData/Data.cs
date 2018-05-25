@@ -15,6 +15,7 @@ namespace Server.Sync
             EventHandlers.Add("Sync:Server:Data:Set", new Action<int, string, object>(Set));
             EventHandlers.Add("Sync:Server:Data:Reset", new Action<int, string>(Reset));
             EventHandlers.Add("Sync:Server:Data:Get", new Action<Player, int, string>(GetClient));
+            EventHandlers.Add("Sync:Server:Data:GetAll", new Action<Player, int>(GetAllClient));
             EventHandlers.Add("Sync:Server:Data:Has", new Action<Player, int, string>(HasClient));
             
             Exports.Add("server_sync_data_set", new Action<int, string, object>(Set));
@@ -26,6 +27,7 @@ namespace Server.Sync
             }));
             
             Exports.Add("server_sync_data_get", new Func<int, string, object>(Get));
+            Exports.Add("server_sync_data_getall", new Func<int, object>(GetAll));
             Exports.Add("server_sync_data_has", new Func<int, string, bool>(Has));
             
             TriggerEvent("OnServerSyncDataLoaded", CitizenFX.Core.Native.API.GetCurrentResourceName());
@@ -85,12 +87,28 @@ namespace Server.Sync
             }
         }
         
-        public static string[] GetAll(int id)
+        public static string[] GetAllKey(int id)
         {
             lock (_data)
             {
                 return _data.ContainsKey(id) ? _data[id].Select(pair => pair.Key).ToArray() : new string[0];
             }
+        }
+        
+        public static Dictionary<string, object> GetAll(int id)
+        {
+            lock (_data)
+            {
+                return _data.ContainsKey(id) ? _data[id] : null;
+            }
+        }
+        
+        private static void GetAllClient([FromSource] Player player, int id)
+        {
+            if (Debug)
+                CitizenFX.Core.Debug.WriteLine($"[GET ALL CLIENT] ID: {id}");
+            
+            TriggerClientEvent(player, "Sync:Client:Data:GetAll", GetAll(id));
         }
         
         private static void GetClient([FromSource] Player player, int id, string key)
