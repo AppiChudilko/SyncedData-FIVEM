@@ -196,7 +196,7 @@ namespace Client.Sync
         
         private static async void GetAllServer(dynamic callback)
         {
-            while (_isServerGetCallBack)
+            while (_isServerGetAllCallBack)
             {
                 await Delay(1);
             }
